@@ -11,8 +11,9 @@ func NewCondition(ele *Element) *Condition {
 	return cond
 }
 
-func (cond *Condition) AddSubElement(ele *Element) {
+func (cond *Condition) Include(ele *Element) *Condition {
 	cond.elements = append(cond.elements, ele)
+	return cond
 }
 
 type Element struct {
@@ -27,6 +28,7 @@ func NewElement(name string) *Element {
 	}
 }
 
-func (ele *Element) AddAttribute(key, val string) {
+func (ele *Element) Attr(key, val string) *Element {
 	ele.attrs[key] = val
+	return ele
 }
