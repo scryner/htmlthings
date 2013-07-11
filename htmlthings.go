@@ -21,54 +21,69 @@ func NewHtmlThings(r io.Reader) (*HtmlThings, error) {
 }
 
 func (things *HtmlThings) FindAttrValues(cond *Condition, attrName string) (ret []string) {
-	currentNodes := []*html.Node{things.docRoot}
-
-	for _, ele := range cond.elements {
-		var nextNodes []*html.Node
-
-		for _, n := range currentNodes {
-			nodes := findMatchedElementNodes(n, ele)
-			nextNodes = append(nextNodes, nodes...)
-		}
-
-		currentNodes = nextNodes
-	}
-
-	for _, n := range currentNodes {
+	f := func(n *html.Node) bool {
 		for _, attr := range n.Attr {
 			if attr.Key == attrName {
 				ret = append(ret, attr.Val)
 			}
 		}
+
+        return true
 	}
+
+	things.Walk(cond, f)
 
 	return
 }
 
 func (things *HtmlThings) FindTexts(cond *Condition) (ret []string) {
-	currentNodes := []*html.Node{things.docRoot}
+	f := func(n *html.Node) bool {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type == html.TextNode {
+				ret = append(ret, c.Data)
+                break
+			}
+		}
+
+        return false
+	}
+
+	things.Walk(cond, f)
+
+	return
+}
+
+func (things *HtmlThings) Walk(cond *Condition, f func(n *html.Node) bool) {
+	matchedNodes := []*html.Node{things.docRoot}
 
 	for _, ele := range cond.elements {
 		var nextNodes []*html.Node
 
-		for _, n := range currentNodes {
+		for _, n := range matchedNodes {
 			nodes := findMatchedElementNodes(n, ele)
 			nextNodes = append(nextNodes, nodes...)
 		}
 
-		currentNodes = nextNodes
+		matchedNodes = nextNodes
 	}
 
-	for _, n := range currentNodes {
+	var walk func(*html.Node)
+
+	walk = func(n *html.Node) {
+        contd := f(n)
+
+        if !contd {
+            return
+        }
+
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if c.Type == html.TextNode {
-				ret = append(ret, c.Data)
-				break
-			}
+			walk(c)
 		}
 	}
 
-	return
+	for _, n := range matchedNodes {
+		walk(n)
+	}
 }
 
 func findMatchedElementNodes(root *html.Node, ele *Element) (nodes []*html.Node) {
